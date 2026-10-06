@@ -1,0 +1,118 @@
+---
+import { fullTitle, projectUrl, trackLabel, type Project } from '../lib/projects';
+
+interface Props {
+  projects: Project[];
+}
+
+const { projects } = Astro.props;
+---
+
+<section id="research" class="section container" aria-labelledby="side-a">
+  <div class="head">
+    <h2 id="side-a">Side A <span class="sub">· research</span></h2>
+    <a class="mono" href="/publications/">Publications →</a>
+  </div>
+  <ol class="tracks">
+    {
+      projects.map((p) => (
+        <li>
+          <a href={projectUrl(p)}>
+            <span class="num">{trackLabel(p)}</span>
+            <span class="text">
+              <span class="title">{fullTitle(p)}</span>
+              <span class="summary">{p.data.summary}</span>
+            </span>
+            {p.data.tag && <span class="tag mono">{p.data.tag}</span>}
+          </a>
+        </li>
+      ))
+    }
+  </ol>
+</section>
+
+<style>
+  .section {
+    max-width: calc(var(--max) + 48px);
+    padding: 112px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 20px;
+  }
+  h2 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(40px, 8vw, 56px);
+    line-height: 1.1;
+  }
+  .sub {
+    font-style: italic;
+    color: var(--dim);
+  }
+  .head a { text-decoration: none; }
+
+  .tracks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .tracks a {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) 120px;
+    gap: 20px;
+    align-items: baseline;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--line-soft);
+    text-decoration: none;
+    color: var(--text);
+  }
+  .num {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--faint);
+  }
+  .text {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .title {
+    font-family: var(--serif);
+    font-size: clamp(28px, 5vw, 34px);
+    line-height: 1.15;
+    transition: color 0.2s;
+  }
+  .summary {
+    font-size: 16px;
+    color: #9a98ac;
+    line-height: 1.5;
+  }
+  .tag {
+    color: var(--amber);
+    text-align: right;
+  }
+  .tracks a:hover .title { color: var(--amber); }
+
+  @media (max-width: 640px) {
+    .section { padding-top: 80px; }
+    .tracks a {
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 8px 12px;
+      padding: 24px 0;
+    }
+    .tag {
+      grid-column: 2;
+      text-align: left;
+    }
+  }
+</style>

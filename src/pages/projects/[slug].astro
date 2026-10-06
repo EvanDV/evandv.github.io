@@ -1,0 +1,349 @@
+---
+import { Image } from 'astro:assets';
+import { render } from 'astro:content';
+import 'katex/dist/katex.min.css';
+import '../../styles/prose.css';
+import Base from '../../layouts/Base.astro';
+import TopBar from '../../components/TopBar.astro';
+import Footer from '../../components/Footer.astro';
+import { fullTitle, getProjects, projectUrl, trackLabel, type Project } from '../../lib/projects';
+
+export async function getStaticPaths() {
+  const projects = await getProjects();
+  // Projects with a `link` live elsewhere, but stay in the prev/next chain.
+  return projects.flatMap((project, i) => project.data.link ? [] : [{
+    params: { slug: project.id },
+    props: { project, prev: projects[i - 1], next: projects[i + 1] },
+  }]);
+}
+
+interface Props {
+  project: Project;
+  prev?: Project;
+  next?: Project;
+}
+
+const { project, prev, next } = Astro.props;
+const d = project.data;
+const { Content, headings } = await render(project);
+const sections = headings.filter((h) => h.depth === 2);
+
+const label = [`Side ${d.side}`, `Track ${d.track}`, d.kind ?? d.tag].filter(Boolean).join(' · ');
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<Base title={`${fullTitle(project)} · Evan Davies-Velie`} description={d.summary} sky="light">
+  <div class="wrap">
+    <TopBar back />
+
+    <main>
+      <header class="head container">
+        <span class="label mono">{label}</span>
+        <h1>
+          {d.title}{d.titleAccent && <> <span class="accent">{d.titleAccent}</span></>}
+        </h1>
+        <p class="summary">{d.summary}</p>
+        {
+          (d.wip || d.pills.length > 0) && (
+            <ul class="pills mono">
+              {d.wip && <li class="wip">Work in progress</li>}
+              {d.pills.map((pill) => <li>{pill}</li>)}
+            </ul>
+          )
+        }
+      </header>
+
+      {
+        d.hero && (
+          <figure class="hero container">
+            <Image
+              src={d.hero}
+              alt={d.heroAlt ?? ''}
+              widths={[560, 1120, 2240].filter((w) => w <= d.hero!.width)}
+              sizes="(max-width: 1168px) calc(100vw - 48px), 1120px"
+              loading="eager"
+              fetchpriority="high"
+            />
+            {d.heroCaption && <figcaption>{d.heroCaption}</figcaption>}
+          </figure>
+        )
+      }
+
+      <div class="body container">
+        {
+          (sections.length > 0 || d.links.length > 0) && (
+            <aside class="sidebar">
+              {sections.length > 0 && (
+                <nav class="block" aria-label="Sections">
+                  <span class="side-label mono">Tracklist</span>
+                  {sections.map((h, i) => (
+                    <a href={`#${h.slug}`} data-section={h.slug}>
+                      <span class="n">{pad(i + 1)}</span>
+                      {h.text}
+                    </a>
+                  ))}
+                </nav>
+              )}
+              {d.links.length > 0 && (
+                <div class="block links">
+                  <span class="side-label mono">Links</span>
+                  {d.links.map((l) =>
+                    l.href ? <a href={l.href}>{l.label} ↗</a> : <span class="plain">{l.label}</span>,
+                  )}
+                </div>
+              )}
+            </aside>
+          )
+        }
+
+        <article class="prose">
+          <Content />
+        </article>
+      </div>
+
+      <nav class="pager container" aria-label="Other tracks">
+        {
+          prev ? (
+            <a href={projectUrl(prev)}>
+              <span class="mono">← {trackLabel(prev)}</span>
+              <span class="t">{fullTitle(prev)}</span>
+            </a>
+          ) : (
+            <a href="/#research">
+              <span class="mono">← Back</span>
+              <span class="t">All tracks</span>
+            </a>
+          )
+        }
+        {
+          next ? (
+            <a class="right" href={projectUrl(next)}>
+              <span class="mono">Next · {trackLabel(next)} →</span>
+              <span class="t">{fullTitle(next)}</span>
+            </a>
+          ) : (
+            <a class="right" href="/#research">
+              <span class="mono">Back →</span>
+              <span class="t">All tracks</span>
+            </a>
+          )
+        }
+      </nav>
+    </main>
+  </div>
+  <Footer bordered />
+</Base>
+
+<script>
+  // Highlight the section being read, in the sidebar and the article.
+  const links = new Map(
+    [...document.querySelectorAll<HTMLAnchorElement>('[data-section]')].map((a) => [a.dataset.section!, a]),
+  );
+  const heads = [...document.querySelectorAll<HTMLElement>('.prose h2[id]')];
+
+  if (links.size && heads.length) {
+    let current = '';
+    const setActive = (id: string) => {
+      if (id === current) return;
+      current = id;
+      links.forEach((a, key) => a.toggleAttribute('data-active', key === id));
+      heads.forEach((h) => h.toggleAttribute('data-active', h.id === id));
+    };
+    const update = () => {
+      // The last heading above the upper third of the viewport.
+      const line = innerHeight / 3;
+      let id = heads[0].id;
+      for (const h of heads) if (h.getBoundingClientRect().top <= line) id = h.id;
+      setActive(id);
+    };
+    let queued = false;
+    addEventListener(
+      'scroll',
+      () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+          queued = false;
+          update();
+        });
+      },
+      { passive: true },
+    );
+    update();
+  }
+</script>
+
+<style>
+  .wrap { padding: 24px 24px 0; }
+
+  /* Header */
+  .head {
+    padding: 72px 0 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .label {
+    letter-spacing: 0.14em;
+    color: var(--amber);
+  }
+  h1 {
+    margin: 0;
+    max-width: 900px;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(48px, 10vw, 84px);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+  }
+  .accent {
+    font-style: italic;
+    color: var(--amber);
+  }
+  .summary {
+    margin: 0;
+    max-width: 680px;
+    font-size: 20px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  .pills {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+  }
+  .pills li {
+    padding: 7px 14px;
+    border: 1px solid #343a63;
+    border-radius: 999px;
+    color: var(--muted);
+  }
+  .pills .wip {
+    border-color: rgba(232, 184, 107, 0.55);
+    color: var(--amber);
+    background: rgba(232, 184, 107, 0.08);
+  }
+
+  /* Hero figure */
+  .hero {
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .hero img {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  figcaption {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--dim);
+  }
+
+  /* Sidebar + article */
+  .body {
+    padding: 88px 0 96px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 64px;
+    align-items: flex-start;
+  }
+  .sidebar {
+    flex: 1 1 240px;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+  @media (min-width: 900px) {
+    .sidebar {
+      position: sticky;
+      top: 32px;
+    }
+  }
+  .block {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .block + .block {
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+  }
+  .side-label {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--faint);
+  }
+  .block a {
+    display: flex;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  .block a:hover { color: var(--amber); }
+  .block .n {
+    font-family: var(--mono);
+    color: var(--faint);
+  }
+  .block a[data-active] .n { color: var(--amber); }
+  .links a { color: var(--amber); }
+  .links a:hover { color: var(--amber-hover); }
+  .plain {
+    font-size: 15px;
+    color: var(--dim);
+  }
+
+  /* Pager */
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 28px 0 96px;
+    border-top: 1px solid var(--line);
+  }
+  .pager a {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .pager a.right {
+    align-items: flex-end;
+    text-align: right;
+    margin-left: auto;
+  }
+  .pager .mono {
+    font-size: 12px;
+    color: var(--faint);
+  }
+  .pager .t {
+    font-family: var(--serif);
+    font-size: 28px;
+    line-height: 1.2;
+  }
+  .pager a:hover .t { color: var(--amber); }
+
+  @media (max-width: 640px) {
+    .head { padding: 48px 0 40px; }
+    .summary { font-size: 18px; }
+    .body {
+      padding: 56px 0 72px;
+      gap: 48px;
+    }
+    .sidebar { max-width: none; }
+  }
+</style>

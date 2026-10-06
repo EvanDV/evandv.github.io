@@ -1,0 +1,102 @@
+---
+// Latest Last.fm scrobble. Hidden until a request succeeds, so it fails
+// quietly when the API is down or the env vars aren't set.
+---
+
+<div class="strip" data-now-spinning hidden>
+  <div class="container row mono">
+    <span class="status"><span class="dot" aria-hidden="true"></span><span data-status>Last played</span></span>
+    <a class="track" data-track href="#" target="_blank" rel="noopener"></a>
+    <span class="via">via Last.fm</span>
+  </div>
+</div>
+
+<script>
+  const USER = import.meta.env.PUBLIC_LASTFM_USER;
+  const KEY = import.meta.env.PUBLIC_LASTFM_KEY;
+  const REFRESH_MS = 60_000;
+
+  const strip = document.querySelector<HTMLElement>('[data-now-spinning]');
+  const status = strip?.querySelector<HTMLElement>('[data-status]');
+  const trackEl = strip?.querySelector<HTMLAnchorElement>('[data-track]');
+
+  async function update() {
+    if (!strip || !status || !trackEl) return;
+    try {
+      const url = new URL('https://ws.audioscrobbler.com/2.0/');
+      url.search = new URLSearchParams({
+        method: 'user.getrecenttracks',
+        user: USER,
+        api_key: KEY,
+        format: 'json',
+        limit: '1',
+      }).toString();
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Last.fm ${res.status}`);
+      const json = await res.json();
+
+      // `track` is an array, or a single object when there's only one.
+      const tracks = json?.recenttracks?.track;
+      const t = Array.isArray(tracks) ? tracks[0] : tracks;
+      if (!t?.name) throw new Error('No tracks');
+
+      const playing = t['@attr']?.nowplaying === 'true';
+      status.textContent = playing ? 'Now spinning' : 'Last played';
+      strip.classList.toggle('playing', playing);
+      trackEl.textContent = `${t.name} — ${t.artist?.['#text'] ?? 'Unknown artist'}`;
+      trackEl.href = t.url || '#';
+      strip.hidden = false;
+    } catch {
+      strip.hidden = true;
+    }
+  }
+
+  if (USER && KEY && strip) {
+    update();
+    setInterval(() => {
+      if (document.visibilityState === 'visible') update();
+    }, REFRESH_MS);
+  }
+</script>
+
+<style>
+  .strip {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 18px 24px;
+    background: rgba(12, 15, 29, 0.6);
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px 20px;
+    flex-wrap: wrap;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--amber);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--amber);
+    opacity: 0.5;
+  }
+  .playing .dot { opacity: 1; }
+  .track {
+    color: var(--text);
+    text-decoration: none;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .track:hover { color: var(--amber); }
+  .via { color: var(--faint); }
+</style>

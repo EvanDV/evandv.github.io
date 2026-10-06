@@ -1,0 +1,59 @@
+---
+// Big page header: mono label, serif title with an optional italic amber
+// part, summary line. Extra content (pills, links) goes in the slot.
+interface Props {
+  label: string;
+  title: string;
+  accent?: string;
+  summary?: string;
+  /** Put the accent on its own line (like the name on the home page). */
+  stacked?: boolean;
+}
+
+const { label, title, accent, summary, stacked = false } = Astro.props;
+---
+
+<header class="head">
+  <span class="label mono">{label}</span>
+  <h1>
+    {title}{accent && (stacked ? <><br /><span class="accent">{accent}</span></> : <> <span class="accent">{accent}</span></>)}
+  </h1>
+  {summary && <p class="summary">{summary}</p>}
+  <slot />
+</header>
+
+<style>
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .label {
+    letter-spacing: 0.14em;
+    color: var(--amber);
+  }
+  h1 {
+    margin: 0;
+    max-width: 900px;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(48px, 10vw, 84px);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+    overflow-wrap: break-word;
+  }
+  .accent {
+    font-style: italic;
+    color: var(--amber);
+  }
+  .summary {
+    margin: 0;
+    max-width: 680px;
+    font-size: 20px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  @media (max-width: 640px) {
+    .summary { font-size: 18px; }
+  }
+</style>

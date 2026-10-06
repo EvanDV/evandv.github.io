@@ -1,0 +1,72 @@
+:root {
+  --bg: #0c0f1d;          /* page background */
+  --panel: rgba(23,27,49,0.85);
+  --line: #262b48;        /* borders, dividers */
+  --line-soft: #1c2038;
+  --text: #e9e6dd;
+  --text-body: #d6d3cb;   /* long-form paragraphs */
+  --muted: #b8b6c8;
+  --dim: #8a90b4;
+  --faint: #6b7096;       /* labels, track numbers */
+  --amber: #e8b86b;       /* the one accent */
+  --amber-hover: #f6d79e;
+  --max: 1120px;          /* content width */
+
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans: 'DM Sans', system-ui, sans-serif;
+  --mono: 'DM Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { background: var(--bg); }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--amber); }
+a:hover { color: var(--amber-hover); }
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}
+
+img { max-width: 100%; display: block; }
+
+/* The sky is absolutely positioned inside .page; content sits above it.
+   overflow: clip (not hidden) so position: sticky still works inside. */
+.page {
+  position: relative;
+  overflow: clip;
+  min-height: 100vh;
+}
+.page > .content { position: relative; }
+
+.container {
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -1,0 +1,205 @@
+---
+import { Image } from 'astro:assets';
+import { render } from 'astro:content';
+import '../../styles/prose.css';
+import Base from '../../layouts/Base.astro';
+import TopBar from '../../components/TopBar.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import Footer from '../../components/Footer.astro';
+import { formatDate, formatRating, getReviews, reviewUrl, type Review } from '../../lib/reviews';
+
+export async function getStaticPaths() {
+  const reviews = await getReviews();
+  // Newest first: "newer" is the previous item in the list.
+  return reviews.map((review, i) => ({
+    params: { slug: review.id },
+    props: { review, newer: reviews[i - 1], older: reviews[i + 1] },
+  }));
+}
+
+interface Props {
+  review: Review;
+  newer?: Review;
+  older?: Review;
+}
+
+const { review, newer, older } = Astro.props;
+const d = review.data;
+const { Content } = await render(review);
+---
+
+<Base
+  title={`${d.album} by ${d.artist} · Evan Davies-Velie`}
+  description={d.summary ?? `A review of ${d.album} by ${d.artist}.`}
+  sky="light"
+>
+  <div class="wrap">
+    <TopBar back />
+
+    <main class="container">
+      <div class="top">
+        <PageHeader label={`Review · ${formatDate(d.date)}`} title={d.album} accent={d.artist} summary={d.summary} stacked>
+          <ul class="pills mono">
+            {d.rating !== undefined && <li class="score">{formatRating(d.rating)}</li>}
+            {d.released && <li>{d.released}</li>}
+            {d.label && <li>{d.label}</li>}
+          </ul>
+        </PageHeader>
+        <div class="cover">
+          {
+            d.cover ? (
+              <Image src={d.cover} alt={`Cover of ${d.album} by ${d.artist}`} width={360} height={360} densities={[1, 2]} loading="eager" />
+            ) : (
+              <span>{d.album}</span>
+            )
+          }
+        </div>
+      </div>
+
+      <article class="prose prose--plain">
+        <Content />
+      </article>
+
+      <nav class="pager" aria-label="Other reviews">
+        {
+          older ? (
+            <a href={reviewUrl(older)}>
+              <span class="mono">← Older</span>
+              <span class="t">{older.data.album}</span>
+            </a>
+          ) : (
+            <a href="/reviews/">
+              <span class="mono">← Back</span>
+              <span class="t">All reviews</span>
+            </a>
+          )
+        }
+        {
+          newer ? (
+            <a class="right" href={reviewUrl(newer)}>
+              <span class="mono">Newer →</span>
+              <span class="t">{newer.data.album}</span>
+            </a>
+          ) : (
+            <a class="right" href="/reviews/">
+              <span class="mono">Back →</span>
+              <span class="t">All reviews</span>
+            </a>
+          )
+        }
+      </nav>
+    </main>
+  </div>
+  <Footer bordered />
+</Base>
+
+<style>
+  .wrap { padding: 24px 24px 0; }
+
+  .top {
+    padding: 72px 0 72px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 48px;
+  }
+  .top > :global(.head) {
+    flex: 1 1 480px;
+    min-width: 0;
+  }
+  .cover {
+    flex: 0 1 360px;
+    aspect-ratio: 1;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow: hidden;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+  }
+  .cover :global(img) {
+    width: calc(100% + 48px);
+    height: calc(100% + 48px);
+    max-width: none;
+    margin: -24px;
+    object-fit: cover;
+  }
+  .cover span {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 32px;
+    text-align: center;
+    color: var(--dim);
+  }
+
+  .pills {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+  }
+  .pills:empty { display: none; }
+  .pills li {
+    padding: 7px 14px;
+    border: 1px solid #343a63;
+    border-radius: 999px;
+    color: var(--muted);
+  }
+  .pills .score {
+    border-color: rgba(232, 184, 107, 0.55);
+    color: var(--amber);
+    background: rgba(232, 184, 107, 0.08);
+  }
+
+  .prose {
+    margin: 0 auto;
+    padding: 24px 0 96px;
+  }
+
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 28px 0 96px;
+    border-top: 1px solid var(--line);
+  }
+  .pager a {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .pager a.right {
+    align-items: flex-end;
+    text-align: right;
+    margin-left: auto;
+  }
+  .pager .mono {
+    font-size: 12px;
+    color: var(--faint);
+  }
+  .pager .t {
+    font-family: var(--serif);
+    font-size: 28px;
+    line-height: 1.2;
+  }
+  .pager a:hover .t { color: var(--amber); }
+
+  @media (max-width: 640px) {
+    .top {
+      padding: 48px 0 40px;
+      gap: 36px;
+    }
+    .cover { flex-basis: 100%; }
+    .prose { padding-bottom: 72px; }
+  }
+</style>

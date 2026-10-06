@@ -1,0 +1,116 @@
+---
+/**
+ * Animated night sky. Sits behind all page content: the parent must be
+ * `position: relative` (see .page in Base.astro).
+ *
+ * variant="full"  – home page: everything.
+ * variant="light" – project pages: no Milky Way, grid, constellations,
+ *                   planet, galaxy or satellite; fewer sparkles and meteors.
+ */
+import '../styles/sky.css';
+
+interface Props {
+  variant?: 'full' | 'light';
+}
+
+const { variant = 'full' } = Astro.props;
+const full = variant === 'full';
+
+// [left, top, animation-delay]
+const sparkles: [string, string, string][] = full
+  ? [
+      ['8%', '90px', '0s'],
+      ['31%', '210px', '1.2s'],
+      ['57%', '60px', '2.5s'],
+      ['88%', '170px', '0.6s'],
+      ['46%', '520px', '3.1s'],
+      ['15%', '760px', '1.8s'],
+      ['72%', '880px', '0.3s'],
+      ['93%', '1120px', '2.2s'],
+      ['5%', '1290px', '3.6s'],
+      ['62%', '1480px', '1.1s'],
+      ['38%', '1660px', '2.8s'],
+      ['80%', '1720px', '0.9s'],
+    ]
+  : [
+      ['12%', '140px', '0s'],
+      ['84%', '90px', '1.4s'],
+      ['64%', '330px', '2.6s'],
+      ['6%', '980px', '0.8s'],
+      ['94%', '1400px', '3.2s'],
+      ['8%', '2100px', '1.9s'],
+    ];
+
+const nebulae = full ? [1, 2, 3, 4] : [1, 2, 4];
+const meteors = full ? [1, 2, 3] : [1, 3];
+---
+
+<div class="sky-layer" aria-hidden="true">
+  {nebulae.map((n) => <div class={`nebula neb-${n}`} />)}
+
+  {
+    full && (
+      <>
+        <div class="milky" />
+        <svg
+          class="sky-grid"
+          viewBox="0 0 1280 760"
+          preserveAspectRatio="xMidYMid slice"
+          fill="none"
+          stroke="rgba(138,144,180,0.13)"
+          stroke-width="1"
+        >
+          <ellipse cx="640" cy="1100" rx="1100" ry="560" />
+          <ellipse cx="640" cy="1100" rx="1100" ry="760" />
+          <ellipse cx="640" cy="1100" rx="1100" ry="960" />
+          <path d="M640 0 V760" />
+          <path d="M200 0 Q 420 380 330 760" />
+          <path d="M1080 0 Q 860 380 950 760" />
+        </svg>
+
+        {/* Cassiopeia */}
+        <svg class="const-cas" viewBox="0 0 260 140" fill="none">
+          <path d="M10 40 L70 110 L130 60 L190 115 L250 30" stroke="rgba(207,214,255,0.35)" stroke-width="1" />
+          <circle cx="10" cy="40" r="3" fill="#fff" />
+          <circle cx="70" cy="110" r="2.5" fill="#fff" />
+          <circle cx="130" cy="60" r="3.5" fill="#ffe7bf" />
+          <circle cx="190" cy="115" r="2.5" fill="#fff" />
+          <circle cx="250" cy="30" r="3" fill="#fff" />
+          <text x="134" y="45" fill="rgba(207,214,255,0.5)" font-family="DM Mono, monospace" font-size="10">CAS</text>
+        </svg>
+
+        {/* Lyra */}
+        <svg class="const-lyr" viewBox="0 0 150 190" fill="none">
+          <path d="M75 10 L50 60 L70 120 L110 125 L95 65 Z M50 60 L95 65" stroke="rgba(207,214,255,0.3)" stroke-width="1" />
+          <circle cx="75" cy="10" r="4" fill="#dfe8ff" />
+          <circle cx="50" cy="60" r="2.5" fill="#fff" />
+          <circle cx="95" cy="65" r="2.5" fill="#fff" />
+          <circle cx="70" cy="120" r="2.5" fill="#fff" />
+          <circle cx="110" cy="125" r="2.5" fill="#fff" />
+          <text x="84" y="14" fill="rgba(207,214,255,0.5)" font-family="DM Mono, monospace" font-size="10">LYR</text>
+        </svg>
+
+        <div class="planet">
+          <div class="planet-body" />
+          <div class="planet-ring" />
+        </div>
+        <div class="galaxy" />
+      </>
+    )
+  }
+
+  <div class="sky-layer stars-a"></div>
+  <div class="sky-layer stars-b"></div>
+  <div class="sky-layer stars-c"></div>
+
+  {
+    sparkles.map(([left, top, delay]) => (
+      <svg class="sparkle" viewBox="0 0 18 18" style={`left:${left};top:${top};animation-delay:${delay}`}>
+        <path d="M9 0 L10.4 7.6 L18 9 L10.4 10.4 L9 18 L7.6 10.4 L0 9 L7.6 7.6 Z" fill="#ffffff" />
+      </svg>
+    ))
+  }
+
+  {full && <div class="sat" />}
+  {meteors.map((n) => <div class={`meteor meteor-${n}`} />)}
+</div>

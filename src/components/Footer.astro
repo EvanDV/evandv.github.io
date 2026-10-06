@@ -1,0 +1,48 @@
+---
+import { SITE } from '../config';
+
+interface Props {
+  /** Top rule, used on project pages. */
+  bordered?: boolean;
+}
+
+const { bordered = false } = Astro.props;
+---
+
+<footer class:list={{ bordered }}>
+  <div class="container inner mono">
+    <span>© {SITE.name}</span>
+    <span class="links">
+      <a class="email" href={`mailto:${SITE.email}`}>{SITE.email}</a>
+      <span aria-hidden="true">·</span>
+      <a href={SITE.github}>GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href={SITE.lastfm}>Last.fm</a>
+    </span>
+  </div>
+</footer>
+
+<style>
+  footer { padding: 32px 24px 48px; }
+  .bordered { border-top: 1px solid var(--line-soft); }
+  .inner {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    color: var(--faint);
+    letter-spacing: 0.06em;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  a {
+    color: var(--dim);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+  a:hover { color: var(--amber); }
+  .email { text-transform: none; }
+</style>

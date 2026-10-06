@@ -1,0 +1,50 @@
+---
+import type { ImageMetadata } from 'astro';
+import Base from '../layouts/Base.astro';
+import TopBar from '../components/TopBar.astro';
+import Hero from '../components/Hero.astro';
+import NowSpinning from '../components/NowSpinning.astro';
+import SideA from '../components/SideA.astro';
+import SideB from '../components/SideB.astro';
+import Radio from '../components/Radio.astro';
+import Footer from '../components/Footer.astro';
+import { getProjects } from '../lib/projects';
+import { getReviews } from '../lib/reviews';
+import { PHOTOS } from '../data/astrophotos';
+import photo from '../assets/evan.jpg';
+
+const projects = await getProjects();
+const sideA = projects.filter((p) => p.data.side === 'A');
+const sideB = projects.filter((p) => p.data.side === 'B');
+
+// Cards that link to a section show its newest image: the latest review
+// with a cover, and the first photo in the astrophotography gallery.
+const sectionCovers: Record<string, ImageMetadata | undefined> = {
+  '/reviews/': (await getReviews()).find((r) => r.data.cover)?.data.cover,
+  '/astrophotography/': PHOTOS[0]?.image,
+};
+const covers = Object.fromEntries(
+  sideB.flatMap((p) => {
+    const cover = p.data.link && sectionCovers[p.data.link];
+    return cover ? [[p.id, cover]] : [];
+  }),
+);
+---
+
+<Base title="Evan Davies-Velie">
+  <div class="top">
+    <TopBar />
+    <Hero photo={photo} />
+  </div>
+  <NowSpinning />
+  <main>
+    <SideA projects={sideA} />
+    <SideB projects={sideB} covers={covers} />
+    <Radio />
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .top { padding: 24px 24px 0; }
+</style>

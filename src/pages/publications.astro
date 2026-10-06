@@ -1,0 +1,184 @@
+---
+// Generated from src/data/publications.bib. Evan's name is bolded.
+import Base from '../layouts/Base.astro';
+import TopBar from '../components/TopBar.astro';
+import Footer from '../components/Footer.astro';
+import { SITE } from '../config';
+import { getPublications, type Credit } from '../lib/publications';
+
+// Comma between names, nothing before ")", a space otherwise.
+const sep = (c: Credit, next?: Credit) =>
+  !next || next.text.startsWith(')') ? '' : c.kind === 'name' && next.kind === 'name' ? ', ' : ' ';
+
+const pubs = getPublications();
+const years = [...new Set(pubs.map((p) => p.year))];
+---
+
+<Base
+  title="Publications · Evan Davies-Velie"
+  description="Papers by Evan Davies-Velie on fast radio bursts, CHIME and CHORD."
+  sky="light"
+>
+  <div class="wrap">
+    <TopBar back />
+
+    <main>
+      <header class="head container">
+        <span class="label mono">Liner credits</span>
+        <h1>Publications</h1>
+        <p class="summary">Papers I've contributed to, newest first.</p>
+        <p class="profile mono"><a href={SITE.researchgate}>ResearchGate ↗</a></p>
+      </header>
+
+      <div class="list container">
+        {
+          years.map((year) => (
+            <section aria-labelledby={`y${year}`}>
+              <h2 id={`y${year}`}>{year}</h2>
+              <ol>
+                {pubs
+                  .filter((p) => p.year === year)
+                  .map((p) => (
+                    <li class="pub">
+                      <div class="main">
+                        <a class="title" href={p.url}>
+                          {p.title}
+                        </a>
+                        <p class="authors">
+                          {p.credits.map((c, i) => (
+                            <>
+                              {c.kind === 'name' && c.me ? <strong>{c.text}</strong> : c.text}
+                              {sep(c, p.credits[i + 1])}
+                            </>
+                          ))}
+                        </p>
+                        <p class="meta mono">
+                          <span>{p.venue}</span>
+                          {p.note && <span class="note">{p.note}</span>}
+                          {p.doi && <a href={`https://doi.org/${p.doi}`}>DOI ↗</a>}
+                          {p.arxiv && <a href={`https://arxiv.org/abs/${p.arxiv}`}>arXiv ↗</a>}
+                        </p>
+                      </div>
+                      <span class="type mono">{p.type}</span>
+                    </li>
+                  ))}
+              </ol>
+            </section>
+          ))
+        }
+      </div>
+    </main>
+  </div>
+  <Footer bordered />
+</Base>
+
+<style>
+  .wrap { padding: 24px 24px 0; }
+
+  .head {
+    padding: 72px 0 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .label {
+    letter-spacing: 0.14em;
+    color: var(--amber);
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(48px, 10vw, 84px);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+  }
+  .summary {
+    margin: 0;
+    max-width: 680px;
+    font-size: 20px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  .profile { margin: 0; }
+  .profile a { text-decoration: none; }
+
+  .list { padding: 32px 0 112px; }
+  section + section { margin-top: 64px; }
+  h2 {
+    margin: 0;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(34px, 6vw, 42px);
+    color: var(--dim);
+    font-style: italic;
+  }
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .pub {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 120px;
+    gap: 20px;
+    align-items: baseline;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .main {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .title {
+    font-family: var(--serif);
+    font-size: clamp(24px, 4vw, 30px);
+    line-height: 1.2;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .title:hover { color: var(--amber); }
+  .authors {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.55;
+    color: #9a98ac;
+  }
+  .authors strong {
+    color: var(--amber);
+    font-weight: 600;
+  }
+  .meta {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: 0.06em;
+    text-transform: none;
+  }
+  .meta a { text-decoration: none; }
+  .note { color: var(--faint); }
+  .type {
+    font-size: 12px;
+    color: var(--amber);
+    text-align: right;
+  }
+
+  @media (max-width: 640px) {
+    .head { padding: 48px 0 32px; }
+    .summary { font-size: 18px; }
+    .pub {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+    .type {
+      grid-row: 1;
+      text-align: left;
+    }
+  }
+</style>

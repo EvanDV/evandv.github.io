@@ -1,0 +1,289 @@
+---
+/**
+ * Radio block: previous CKUT episode (plays the archive MP3) and the next one
+ * (plays CKUT's live stream while it's on air). Episodes live in
+ * src/data/radio.ts. The HTML is rendered at build time and then refreshed in
+ * the browser, so "previous / next / on air" stay right without a rebuild.
+ */
+import { EPISODES, RADIO } from '../data/radio';
+import { formatDay, formatTimes, radioState } from '../lib/radio';
+
+const { previous, next, onAir } = radioState(EPISODES);
+---
+
+<section
+  id="radio"
+  class="radio"
+  aria-labelledby="radio-name"
+  data-radio
+  data-episodes={JSON.stringify(EPISODES)}
+  data-live={RADIO.liveStream}
+>
+  <div class="container inner">
+    <div class="info">
+      <span class="mono label">{RADIO.station}</span>
+      <h2 id="radio-name">{RADIO.name} <span class="accent">{RADIO.nameAccent}</span></h2>
+      <p>{RADIO.blurb}</p>
+    </div>
+
+    <div class="players">
+      <div class="pill" data-slot="next" data-on-air={onAir ? '' : undefined} hidden={!next}>
+        <button type="button" data-play disabled={!onAir} aria-label={onAir ? 'Play CKUT live' : 'Live stream plays when the show is on air'}>
+          <svg class="i-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"></path></svg>
+          <svg class="i-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"></path></svg>
+        </button>
+        <div class="status">
+          <span class="mono air"><span class="dot" aria-hidden="true"></span><span data-label>{onAir ? 'On air now' : 'Next episode'}</span></span>
+          <a class="title" data-title href={next?.showPage ?? RADIO.stationUrl}>{next?.show}</a>
+          <span class="meta" data-when>{next && `${formatDay(next)} · ${formatTimes(next)}`}</span>
+        </div>
+      </div>
+
+      <div class="pill" data-slot="previous" hidden={!previous}>
+        <button type="button" data-play aria-label="Play previous episode">
+          <svg class="i-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"></path></svg>
+          <svg class="i-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"></path></svg>
+        </button>
+        <div class="status">
+          <span class="mono air"><span data-label>Previous episode</span></span>
+          <a class="title" data-title href={previous?.playlist ?? previous?.showPage ?? RADIO.stationUrl}>{previous?.show}</a>
+          <span class="meta"><span data-when>{previous && formatDay(previous)}</span><span data-time></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <audio preload="none" data-audio></audio>
+</section>
+
+<script>
+  import type { Episode } from '../data/radio';
+  import { archiveUrl, formatDay, formatTimes, radioState } from '../lib/radio';
+
+  const root = document.querySelector<HTMLElement>('[data-radio]');
+  if (root) {
+    const episodes: Episode[] = JSON.parse(root.dataset.episodes ?? '[]');
+    const live = root.dataset.live!;
+    const audio = root.querySelector<HTMLAudioElement>('[data-audio]')!;
+    const slots = {
+      next: root.querySelector<HTMLElement>('[data-slot="next"]')!,
+      previous: root.querySelector<HTMLElement>('[data-slot="previous"]')!,
+    };
+    const q = <T extends Element = HTMLElement>(el: Element, sel: string) => el.querySelector<T>(sel)!;
+
+    let playing: 'next' | 'previous' | null = null;
+    let previousSrc = '';
+
+    const clock = (s: number) => {
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = String(Math.floor(s % 60)).padStart(2, '0');
+      return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+    };
+
+    function render() {
+      const { previous, next, onAir } = radioState(episodes);
+
+      slots.next.hidden = !next;
+      if (next) {
+        slots.next.toggleAttribute('data-on-air', onAir);
+        q(slots.next, '[data-label]').textContent = onAir ? 'On air now' : 'Next episode';
+        const title = q<HTMLAnchorElement>(slots.next, '[data-title]');
+        title.textContent = next.show;
+        if (next.showPage) title.href = next.showPage;
+        q(slots.next, '[data-when]').textContent = `${formatDay(next)} · ${formatTimes(next)}`;
+        const btn = q<HTMLButtonElement>(slots.next, '[data-play]');
+        btn.disabled = !onAir;
+        if (!onAir && playing === 'next') stop();
+        updateButtons();
+      }
+
+      slots.previous.hidden = !previous;
+      if (previous) {
+        const title = q<HTMLAnchorElement>(slots.previous, '[data-title]');
+        title.textContent = previous.show;
+        const link = previous.playlist ?? previous.showPage;
+        if (link) title.href = link;
+        q(slots.previous, '[data-when]').textContent = formatDay(previous);
+        const src = archiveUrl(previous);
+        if (src !== previousSrc && playing === 'previous') stop();
+        previousSrc = src;
+      }
+    }
+
+    function updateButtons() {
+      for (const [name, slot] of Object.entries(slots)) {
+        const on = playing === name && !audio.paused;
+        slot.toggleAttribute('data-playing', on);
+        const btn = q<HTMLButtonElement>(slot, '[data-play]');
+        if (name === 'next') {
+          btn.setAttribute('aria-label', btn.disabled ? 'Live stream plays when the show is on air' : on ? 'Pause CKUT live' : 'Play CKUT live');
+        } else {
+          btn.setAttribute('aria-label', on ? 'Pause previous episode' : 'Play previous episode');
+        }
+      }
+    }
+
+    function stop() {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      playing = null;
+      q(slots.previous, '[data-time]').textContent = '';
+      updateButtons();
+    }
+
+    function toggle(name: 'next' | 'previous') {
+      if (playing === name && !audio.paused) {
+        // Live radio can't really pause: drop the connection instead.
+        if (name === 'next') stop();
+        else audio.pause();
+        return;
+      }
+      if (playing !== name) {
+        audio.src = name === 'next' ? live : previousSrc;
+        playing = name;
+      }
+      audio.play().catch(() => {
+        if (name === 'previous') q(slots.previous, '[data-time]').textContent = ' · not available yet';
+        playing = null;
+        updateButtons();
+      });
+    }
+
+    q(slots.next, '[data-play]').addEventListener('click', () => toggle('next'));
+    q(slots.previous, '[data-play]').addEventListener('click', () => toggle('previous'));
+    audio.addEventListener('play', updateButtons);
+    audio.addEventListener('pause', updateButtons);
+    audio.addEventListener('timeupdate', () => {
+      if (playing !== 'previous' || !Number.isFinite(audio.duration)) return;
+      q(slots.previous, '[data-time]').textContent = ` · ${clock(audio.currentTime)} / ${clock(audio.duration)}`;
+    });
+
+    render();
+    setInterval(render, 30_000);
+  }
+</script>
+
+<style>
+  .radio {
+    background: var(--amber);
+    color: var(--bg);
+    padding: 96px 24px;
+  }
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 48px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .info {
+    flex: 1 1 420px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .label { letter-spacing: 0.14em; }
+  h2 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(52px, 11vw, 72px);
+    line-height: 1;
+  }
+  .accent { font-style: italic; }
+  p {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.6;
+    max-width: 440px;
+  }
+
+  .players {
+    flex: 0 1 380px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px 28px 16px 16px;
+    border-radius: 999px;
+  }
+  .pill[hidden] { display: none; }
+  button {
+    width: 60px;
+    height: 60px;
+    flex: none;
+    border-radius: 50%;
+    border: none;
+    background: var(--amber);
+    color: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+    background: transparent;
+    color: var(--amber);
+    box-shadow: inset 0 0 0 1px rgba(232, 184, 107, 0.5);
+  }
+  button:not(:disabled):hover { background: var(--amber-hover); }
+  .i-pause { display: none; }
+  [data-playing] .i-play { display: none; }
+  [data-playing] .i-pause { display: block; }
+
+  .status {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .air {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--amber);
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1px solid var(--amber);
+  }
+  [data-on-air] .dot {
+    background: var(--amber);
+    animation: onair 1.6s ease-in-out infinite;
+  }
+  @keyframes onair { 50% { opacity: 0.3; } }
+  @media (prefers-reduced-motion: reduce) {
+    [data-on-air] .dot { animation: none; }
+  }
+  .title {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 17px;
+  }
+  .title:hover { color: var(--amber); }
+  .meta {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .radio :focus-visible { outline-color: var(--bg); }
+  .pill :focus-visible { outline-color: var(--amber); }
+
+  @media (max-width: 640px) {
+    .radio { padding: 72px 24px; }
+    .players { flex-basis: 100%; }
+    .pill { padding-right: 20px; }
+  }
+</style>

@@ -1,0 +1,134 @@
+---
+import { Image } from 'astro:assets';
+import Base from '../../layouts/Base.astro';
+import TopBar from '../../components/TopBar.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import Footer from '../../components/Footer.astro';
+import { formatDate, formatRating, getReviews, reviewUrl } from '../../lib/reviews';
+
+const reviews = await getReviews();
+---
+
+<Base title="Music blog · Evan Davies-Velie" description="Album reviews by Evan Davies-Velie." sky="light">
+  <div class="wrap">
+    <TopBar back />
+
+    <main class="container">
+      <div class="top">
+        <PageHeader label="Side B · Track 3" title="Music" accent="blog" summary="Album reviews." />
+      </div>
+
+      {
+        reviews.length === 0 ? (
+          <p class="empty mono">No reviews yet. First one coming soon.</p>
+        ) : (
+          <ul class="grid">
+            {reviews.map((r) => (
+              <li>
+                <a href={reviewUrl(r)}>
+                  <div class="cover">
+                    {r.data.cover ? (
+                      <Image src={r.data.cover} alt="" width={560} height={560} />
+                    ) : (
+                      <span class="cover-text">{r.data.album}</span>
+                    )}
+                  </div>
+                  <span class="meta mono">
+                    {formatDate(r.data.date)}
+                    {r.data.rating !== undefined && <span class="rating">{formatRating(r.data.rating)}</span>}
+                  </span>
+                  <span class="album">{r.data.album}</span>
+                  <span class="artist">{r.data.artist}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </main>
+  </div>
+  <Footer bordered />
+</Base>
+
+<style>
+  .wrap { padding: 24px 24px 0; }
+  .top { padding: 72px 0 56px; }
+  main { padding-bottom: 112px; }
+
+  .empty {
+    margin: 0;
+    padding: 28px 0;
+    border-top: 1px solid var(--line);
+    color: var(--faint);
+  }
+
+  .grid {
+    list-style: none;
+    margin: 0;
+    padding: 32px 0 0;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+    gap: 40px 24px;
+  }
+  .grid a {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .cover {
+    aspect-ratio: 1;
+    margin-bottom: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .cover :global(img) {
+    width: calc(100% + 48px);
+    height: calc(100% + 48px);
+    max-width: none;
+    margin: -24px;
+    object-fit: cover;
+  }
+  .cover-text {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 28px;
+    line-height: 1.15;
+    text-align: center;
+    color: var(--dim);
+  }
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--faint);
+  }
+  .rating { color: var(--amber); }
+  .album {
+    font-family: var(--serif);
+    font-size: 28px;
+    line-height: 1.15;
+    transition: color 0.2s;
+  }
+  .artist {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 20px;
+    color: var(--dim);
+  }
+  .grid a:hover .album { color: var(--amber); }
+  .grid a:hover .cover { border-color: var(--amber); }
+
+  @media (max-width: 640px) {
+    .top { padding: 48px 0 40px; }
+  }
+</style>
